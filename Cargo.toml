@@ -9,3 +9,16 @@ edition = "2021"
 clap = { version = "3.1.18", features = ["derive"] }
 indicatif = "0.16.2"
 tabled = "0.7.0"
+
+# Making https request
+reqwest = "0.11.10"
+graphql_client = { version = "0.10.0", features = ["reqwest"] }
+# Async runtime
+tokio = { version = "1.18.2", features = ["full"] }
+
+# Error handling
+anyhow = "1.0.57"
+
+# Serialization and Deserialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"

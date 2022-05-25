@@ -1,0 +1,16 @@
+query TodosQuery {
+  todos {
+    data {
+      id
+      title
+      completed
+      user {
+        id
+        name
+        email
+      }
+    }
+  }
+}
+
+

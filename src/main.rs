@@ -2,15 +2,50 @@
 
 mod command_group;
 
+use anyhow::{Error as AnyhowError, Result as AnyhowResult};
 use clap::Parser;
 use command_group::{pipeline::PipelineSubcommand, CommandGroup};
+use graphql_client::{reqwest::post_graphql, GraphQLQuery, Response};
 use indicatif::{HumanDuration, ProgressBar, ProgressStyle};
+use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use std::process::Command;
 use std::str;
 use std::thread;
 use std::time::{Duration, Instant};
 use tabled::{Table, Tabled};
+
+const URL: &'static str = "https://graphqlzero.almansi.me/api";
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Todo {
+    title: String,
+    completed: bool,
+    user: User,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct User {
+    id: Option<String>,
+    name: Option<String>,
+    email: Option<String>,
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "src/graphql/schema.json",
+    query_path = "src/graphql/user.graphql",
+    response_derives = "Debug, Serialize, Deserialize"
+)]
+struct TodosQuery;
+
+async fn perform_todos_query() -> Result<Response<todos_query::ResponseData>, reqwest::Error> {
+    let client = reqwest::Client::new();
+    let variables = todos_query::Variables {};
+
+    let response = post_graphql::<TodosQuery, _>(&client, URL, variables).await?;
+    Ok(response)
+}
 
 /// A Swiss-army Knife CLI For Mindvalley Developers
 #[derive(Debug, Parser)]
@@ -60,7 +95,9 @@ struct PipelinePullRequest {
     last_duration: Option<&'static str>,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() -> AnyhowResult<(), AnyhowError> {
+    Cli::parse();
     let cli = Cli::parse();
 
     match cli.command_group {
@@ -186,10 +223,30 @@ fn main() {
 
                 println!("{:?}", str::from_utf8(&output.stdout));
 
+                let todos_data = perform_todos_query()
+                    .await?
+                    .data
+                    .ok_or(anyhow::anyhow!("Error"))?
+                    .todos;
+
+                if let Some(todos_data) = todos_data {
+                    let mut todos = Vec::new();
+
+                    for raw_todo in todos_data.data.unwrap() {
+                        let todo_value = serde_json::to_value(raw_todo)
+                            .expect("Failed converting raw order to json value");
+                        let todo: Todo = serde_json::from_value(todo_value)
+                            .expect("Failed converting json value to Todo object");
+                        todos.push(todo);
+                    }
+
+                    println!("todos: {:#?}", todos);
+                }
+
                 todo!()
             }
         },
-    }
+    };
 }
 
 #[cfg(test)]
