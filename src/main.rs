@@ -34,7 +34,7 @@ struct User {
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "src/graphql/schema.json",
-    query_path = "src/graphql/user.graphql",
+    query_path = "src/graphql/todos.graphql",
     response_derives = "Debug, Serialize, Deserialize"
 )]
 struct TodosQuery;
